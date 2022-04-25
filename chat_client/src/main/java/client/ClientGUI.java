@@ -30,13 +30,13 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JList<String> usersList = new JList<>();
 
     private SocketThread socketThread;
+    private String login;
 
     public ClientGUI() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setSize(WIDTH, HEIGHT);
         setTitle("Chat");
-
 
         logTextArea.setEditable(false);
         logTextArea.setLineWrap(true);
@@ -62,7 +62,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         sendButton.addActionListener(this);
         messageTextField.addActionListener(this);
         loginButton.addActionListener(this);
+        logoutButton.addActionListener(this);
 
+        isConnection(false);
         setVisible(true);
         Thread.setDefaultUncaughtExceptionHandler(this);
     }
@@ -80,6 +82,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             sendMessage();
         } else if (source.equals(loginButton)) {
             connect();
+        } else if (source.equals(logoutButton)) {
+            disconnect();
         } else {
             throw new IllegalStateException("Unexpected event");
         }
@@ -88,19 +92,31 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private void connect() {
         try {
             Socket socket = new Socket(ipAddressTextField.getText(), Integer.parseInt(portTextField.getText()));
-            socketThread = new SocketThread(this, "Client", socket);
+            login = loginTextField.getText();
+            socketThread = new SocketThread(this, login, socket);
+            isConnection(true);
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
     }
+
+    private void disconnect() {
+        isConnection(false);
+    }
+
     private void sendMessage() {
         String text = messageTextField.getText();
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-        text = String.format("%s: %s", loginTextField.getText(), text);
+        text = String.format("%s: %s", login, text);
         socketThread.sendMessage(text);
         writeMessageToFile(text);
+    }
+
+    private void isConnection(boolean flag) {
+        panelTop.setVisible(!flag);
+        panelBottom.setVisible(flag);
     }
 
     private void putLog(String message) {
