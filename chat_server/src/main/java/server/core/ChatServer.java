@@ -1,5 +1,6 @@
 package server.core;
 
+import common.NChMP;
 import network.ServerSocketThread;
 import network.ServerSocketThreadListener;
 import network.SocketThread;
@@ -14,45 +15,52 @@ import java.util.Vector;
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
     private final int SERVER_SOCKET_TIMEOUT = 2000;
     private final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss ");
+    private ChatServerListener listener;
     private ServerSocketThread server;
     private Vector<SocketThread> clients = new Vector<>();
 
+    public ChatServer(ChatServerListener listener) {
+        this.listener = listener;
+    }
+
     public void start(int port) {
         if (server != null && server.isAlive()) {
-            System.out.println("Server already started");
+            putLog("Server already started");
         } else {
-            System.out.println("Server started at port " + port);
+            putLog("Server started at port " + port);
             server = new ServerSocketThread(this, "Chat server", port, SERVER_SOCKET_TIMEOUT);
         }
     }
 
     public void stop() {
         if (server == null || !server.isAlive()) {
-            System.out.println("Server is not running");
+            putLog("Server is not running");
         } else {
-//            System.out.println("Server stopped");
+//            putLog("Server stopped");
             server.interrupt();
         }
     }
 
     private void putLog(String message) {
-        System.out.printf("%s %s: %s%n", DATE_FORMAT.format(System.currentTimeMillis()),
-                Thread.currentThread().getName(), message);
+        listener.onChatServerMessage(String.format("%s %s: %s", DATE_FORMAT.format(System.currentTimeMillis()),
+                Thread.currentThread().getName(), message));
     }
 
     @Override
     public void onServerStart(ServerSocketThread thread) {
         putLog("Server thread started");
+        ClientsDBProvider.connect();
     }
 
     @Override
     public void onServerStop(ServerSocketThread thread) {
         putLog("Server thread stopped");
+        ClientsDBProvider.disconnect();
     }
 
     @Override
     public void onServerSocketCreated(ServerSocketThread thread, ServerSocket server) {
-        System.out.println("Server socket created");
+        putLog("Server socket created");
     }
 
     @Override
@@ -64,7 +72,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     public void onSocketAccepted(ServerSocketThread thread, ServerSocket server, Socket client) {
         putLog("Client connected");
         String name = "SocketThread " + client.getInetAddress() + ": " + client.getPort();
-        new SocketThread(this, name, client);
+        new ClientThread(this, name, client);
     }
 
     @Override
@@ -92,7 +100,51 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String message) {
 //        thread.sendMessage("echo: " + message);
-        clients.forEach(client -> client.sendMessage(message));
+        System.out.println(message);
+        ClientThread client = (ClientThread) thread;
+        if (client.getIsAuth()) {
+            handleAuthMessage(client, message);
+        } else {
+            handleNotAuthMessage(client, message);
+        }
+    }
+
+    public void handleAuthMessage(ClientThread clientThread, String message) {
+        sendToAllAuthorizes(message);
+    }
+
+    private void sendToAllAuthorizes(String message) {
+        clients.forEach(client -> {
+            if (((ClientThread) client).getIsAuth()) {
+                client.sendMessage(message);
+            }
+        });
+//        for (int i = 0; i < clients.size(); i++) {
+//            ClientThread client = (ClientThread) clients.get(i);
+//            if (!client.getIsAuth()) continue;
+//            client.sendMessage(message);
+//        }
+    }
+
+    private void handleNotAuthMessage(ClientThread clientThread, String message) {
+        String[] strArray = message.split(NChMP.DELIMITER);
+        if (strArray.length != 3 ||
+                !strArray[0].equals(NChMP.START + NChMP.AUTH_REQUEST)) {
+            clientThread.messageFormatError(message);
+            return;
+        }
+        String login = strArray[1];
+        String password = strArray[2];
+        System.out.println(login + " " + password);
+        String nickname = ClientsDBProvider.getNickname(login, password);
+        if (nickname == null) {
+            putLog("Invalid login attempt " + login);
+            clientThread.authFail();
+            return;
+        }
+        System.out.println(nickname);
+        clientThread.authAccept(nickname);
+        sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
     }
 
     @Override

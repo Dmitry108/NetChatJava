@@ -1,5 +1,6 @@
 package client;
 
+import common.NChMP;
 import network.SocketThread;
 import network.SocketThreadListener;
 
@@ -12,7 +13,7 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
-    public static final int WIDTH = 400;
+    public static final int WIDTH = 600;
     public static final int HEIGHT = 300;
 
     private final JPanel panelTop = new JPanel(new GridLayout(2, 3));
@@ -30,7 +31,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JList<String> usersList = new JList<>();
 
     private SocketThread socketThread;
-    private String login;
 
     public ClientGUI() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -64,7 +64,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         loginButton.addActionListener(this);
         logoutButton.addActionListener(this);
 
-        isConnection(false);
+        setUIConnection(false);
         setVisible(true);
         Thread.setDefaultUncaughtExceptionHandler(this);
     }
@@ -92,16 +92,15 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private void connect() {
         try {
             Socket socket = new Socket(ipAddressTextField.getText(), Integer.parseInt(portTextField.getText()));
-            login = loginTextField.getText();
-            socketThread = new SocketThread(this, login, socket);
-            isConnection(true);
+//            login = loginTextField.getText();
+            socketThread = new SocketThread(this, "Client", socket);
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
     }
 
     private void disconnect() {
-        isConnection(false);
+        socketThread = null;
     }
 
     private void sendMessage() {
@@ -109,12 +108,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-        text = String.format("%s: %s", login, text);
+//        text = NChMP.getMessageBroadcast(loginTextField.getText(), text);//String.format("%s: %s", loginTextField.getText(), text);
         socketThread.sendMessage(text);
         writeMessageToFile(text);
     }
 
-    private void isConnection(boolean flag) {
+    private void setUIConnection(boolean flag) {
         panelTop.setVisible(!flag);
         panelBottom.setVisible(flag);
     }
@@ -157,12 +156,17 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     @Override
     public void onSockedStop(SocketThread thread) {
-        putLog("Stop");
+//        putLog("Stop");
+        setUIConnection(false);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
-        putLog("Ready");
+//        putLog("Ready");
+        setUIConnection(true);
+        String login = loginTextField.getText();
+        String password = new String(passwordField.getPassword());
+        thread.sendMessage(NChMP.getAuthRequest(login, password));
     }
 
     @Override
