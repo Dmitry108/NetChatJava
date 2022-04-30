@@ -1,5 +1,7 @@
-package client;
+package client.gui;
 
+import client.core.ChatClient;
+import client.core.ChatClientImpl;
 import common.NChMP;
 import network.SocketThread;
 import network.SocketThreadListener;
@@ -12,7 +14,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Socket;
 
-public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
+public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, ChatClientView {
+
+    private ChatClient chatClient = new ChatClientImpl(this);
+
     public static final int WIDTH = 600;
     public static final int HEIGHT = 300;
 
@@ -29,8 +34,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JTextField messageTextField = new JTextField();
     private final JButton sendButton = new JButton("Send");
     private final JList<String> usersList = new JList<>();
-
-    private SocketThread socketThread;
 
     public ClientGUI() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -81,25 +84,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } else if (source.equals(sendButton) || source.equals(messageTextField)) {
             sendMessage();
         } else if (source.equals(loginButton)) {
-            connect();
+            chatClient.connect(ipAddressTextField.getText(), portTextField.getText());
         } else if (source.equals(logoutButton)) {
-            disconnect();
+            chatClient.disconnect();
         } else {
             throw new IllegalStateException("Unexpected event");
         }
-    }
-
-    private void connect() {
-        try {
-            Socket socket = new Socket(ipAddressTextField.getText(), Integer.parseInt(portTextField.getText()));
-            socketThread = new SocketThread(this, "Client", socket);
-        } catch (IOException e) {
-            showException(Thread.currentThread(), e);
-        }
-    }
-
-    private void disconnect() {
-        socketThread = null;
     }
 
     private void sendMessage() {
@@ -107,7 +97,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-        socketThread.sendMessage(NChMP.getMessageBroadcast(loginTextField.getText(), text));
+        chatClient.sendMessage(loginTextField.getText(), text);
     }
 
     private void setUIConnection(boolean flag) {
@@ -115,7 +105,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         panelBottom.setVisible(flag);
     }
 
-    private void putLog(String message) {
+    @Override
+    public void putLog(String message) {
         if (message.equals("")) return;
         SwingUtilities.invokeLater(() -> {
             logTextArea.append(message + "\n");
@@ -123,57 +114,25 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         });
     }
 
-    private void writeMessageToFile(String text) {
-        try (FileWriter out = new FileWriter("log_chat.txt", true)) {
-            out.write(text + "\n");
-            out.flush();
-        } catch (IOException e) {
-            showException(Thread.currentThread(), e);
-        }
-    }
-
-    public void showException(Thread thread, Throwable throwable) {
-        String message = throwable.getStackTrace().length == 0 ? "Empty stack trace" :
-                String.format("Exception in thread %s %s: %s%n%s", thread.getName(),
-                        throwable.getClass().getCanonicalName(), throwable.getMessage(),
-                        throwable.getStackTrace()[0]);
+    @Override
+    public void showException(String message) {
         JOptionPane.showMessageDialog(null, message, "Exception", JOptionPane.ERROR_MESSAGE);
     }
 
     @Override
     public void uncaughtException(Thread thread, Throwable throwable) {
         throwable.printStackTrace();
-        showException(thread, throwable);
+        chatClient.onException(thread, throwable);
     }
-
     @Override
-    public void onSockedStart(SocketThread thread, Socket socket) {
-        putLog("Start");
-    }
-
-    @Override
-    public void onSockedStop(SocketThread thread) {
-//        putLog("Stop");
-        setUIConnection(false);
-    }
-
-    @Override
-    public void onSocketReady(SocketThread thread, Socket socket) {
-//        putLog("Ready");
+    public void onConnect() {
         setUIConnection(true);
         String login = loginTextField.getText();
         String password = new String(passwordField.getPassword());
-        thread.sendMessage(NChMP.getAuthRequest(login, password));
+        chatClient.tryToLogin(login, password);
     }
-
     @Override
-    public void onReceiveString(SocketThread thread, Socket socket, String message) {
-        putLog(message);
-        writeMessageToFile(message);
-    }
-
-    @Override
-    public void onSocketThreadException(SocketThread thread, Throwable throwable) {
-        showException(thread, throwable);
+    public void onDisconnect() {
+        setUIConnection(false);
     }
 }
