@@ -92,7 +92,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private void connect() {
         try {
             Socket socket = new Socket(ipAddressTextField.getText(), Integer.parseInt(portTextField.getText()));
-//            login = loginTextField.getText();
             socketThread = new SocketThread(this, "Client", socket);
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
@@ -108,9 +107,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-//        text = NChMP.getMessageBroadcast(loginTextField.getText(), text);//String.format("%s: %s", loginTextField.getText(), text);
-        socketThread.sendMessage(text);
-        writeMessageToFile(text);
+        socketThread.sendMessage(NChMP.getMessageBroadcast(loginTextField.getText(), text));
     }
 
     private void setUIConnection(boolean flag) {
@@ -172,6 +169,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String message) {
         putLog(message);
+        writeMessageToFile(message);
     }
 
     @Override
