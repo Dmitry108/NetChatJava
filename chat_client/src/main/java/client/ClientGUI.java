@@ -20,9 +20,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JTextField ipAddressTextField = new JTextField("127.0.0.1");
     private final JTextField portTextField = new JTextField("222");
     private final JCheckBox onTopCheckBox = new JCheckBox("Always on top");
-    private final JTextField loginTextField = new JTextField();
-    private final JPasswordField passwordField = new JPasswordField();
-    private final JButton loginButton = new JButton("Start");
+    private final JTextField loginTextField = new JTextField("aglar");
+    private final JPasswordField passwordField = new JPasswordField("123");
+    private final JButton loginButton = new JButton("Login");
     private final JTextArea logTextArea = new JTextArea();
     private final JPanel panelBottom = new JPanel(new BorderLayout());
     private final JButton logoutButton = new JButton("Logout");
@@ -30,6 +30,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JButton sendButton = new JButton("Send");
     private final JList<String> usersList = new JList<>();
 
+    private boolean shownIoErrors = false;
     private SocketThread socketThread;
 
     public ClientGUI() {
@@ -41,8 +42,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         logTextArea.setEditable(false);
         logTextArea.setLineWrap(true);
         JScrollPane logScrollPane = new JScrollPane(logTextArea);
-        usersList.setPreferredSize(new Dimension(100, 0));
         JScrollPane userListScrollPane = new JScrollPane(usersList);
+        userListScrollPane.setPreferredSize(new Dimension(100, 0));
 
         panelTop.add(ipAddressTextField);
         panelTop.add(portTextField);
@@ -99,7 +100,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     }
 
     private void disconnect() {
-        socketThread = null;
+        socketThread.close();
     }
 
     private void sendMessage() {
@@ -128,7 +129,10 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             out.write(text + "\n");
             out.flush();
         } catch (IOException e) {
-            showException(Thread.currentThread(), e);
+            if (!shownIoErrors) {
+                shownIoErrors = true;
+                showException(Thread.currentThread(), e);
+            }
         }
     }
 
@@ -143,7 +147,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void uncaughtException(Thread thread, Throwable throwable) {
         throwable.printStackTrace();
-        showException(thread, throwable);
+//        showException(thread, throwable);
     }
 
     @Override

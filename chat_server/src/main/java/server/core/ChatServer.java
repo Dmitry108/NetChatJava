@@ -27,7 +27,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
         if (server != null && server.isAlive()) {
             putLog("Server already started");
         } else {
-            putLog("Server started at port " + port);
+//            putLog("Server started at port " + port);
             server = new ServerSocketThread(this, "Chat server", port, SERVER_SOCKET_TIMEOUT);
         }
     }

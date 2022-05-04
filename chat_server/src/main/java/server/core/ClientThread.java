@@ -30,13 +30,11 @@ public class ClientThread extends SocketThread {
 
     public void authFail() {
         sendMessage(NChMP.getAuthDenied());
-        //close();
+        close();
     }
 
     public void messageFormatError(String message) {
         sendMessage(NChMP.getMessageFormatError(message));
-        //close();
+        close();
     }
-
-
 }

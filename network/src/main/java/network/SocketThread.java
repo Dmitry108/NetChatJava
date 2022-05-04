@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class SocketThread extends Thread {
-    private SocketThreadListener listener;
-    private Socket socket;
+    private final SocketThreadListener listener;
+    private final Socket socket;
     private DataOutputStream out;
 
     public SocketThread(SocketThreadListener listener, String name, Socket socket) {
@@ -48,6 +48,15 @@ public class SocketThread extends Thread {
         } catch (IOException e) {
             listener.onSocketThreadException(this, e);
             return false;
+        }
+    }
+
+    public synchronized void close() {
+        interrupt();
+        try {
+            socket.close();
+        } catch (IOException e) {
+            listener.onSocketThreadException(this, e);
         }
     }
 }

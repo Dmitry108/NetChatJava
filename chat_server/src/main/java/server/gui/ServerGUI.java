@@ -4,7 +4,6 @@ import server.core.ChatServer;
 import server.core.ChatServerListener;
 
 import javax.swing.*;
-import javax.swing.text.Document;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
