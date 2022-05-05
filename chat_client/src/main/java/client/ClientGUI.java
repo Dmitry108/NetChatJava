@@ -11,10 +11,15 @@ import java.awt.event.ActionListener;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Socket;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
-    public static final int WIDTH = 600;
-    public static final int HEIGHT = 300;
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss ");
+    private static final int WIDTH = 600;
+    private static final int HEIGHT = 300;
+    public static final String TITLE = "Chat";
 
     private final JPanel panelTop = new JPanel(new GridLayout(2, 3));
     private final JTextField ipAddressTextField = new JTextField("127.0.0.1");
@@ -37,7 +42,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setSize(WIDTH, HEIGHT);
-        setTitle("Chat");
+        setTitle(TITLE);
 
         logTextArea.setEditable(false);
         logTextArea.setLineWrap(true);
@@ -65,7 +70,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         loginButton.addActionListener(this);
         logoutButton.addActionListener(this);
 
-        setUIConnection(false);
+        setUIConnection(false, null);
         setVisible(true);
         Thread.setDefaultUncaughtExceptionHandler(this);
     }
@@ -108,12 +113,15 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-        socketThread.sendMessage(NChMP.getMessageBroadcast(loginTextField.getText(), text));
+//        socketThread.sendMessage(NChMP.getMessageBroadcast(loginTextField.getText(), text));
+        socketThread.sendMessage(text);
     }
 
-    private void setUIConnection(boolean flag) {
+    private void setUIConnection(boolean flag, String login) {
         panelTop.setVisible(!flag);
         panelBottom.setVisible(flag);
+        setTitle(TITLE + (login != null ? " logged in as: " + login : ""));
+        if (!flag) usersList.setListData(new String[0]);
     }
 
     private void putLog(String message) {
@@ -122,6 +130,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             logTextArea.append(message + "\n");
             logTextArea.setCaretPosition(logTextArea.getDocument().getLength());
         });
+        writeMessageToFile(message);
     }
 
     private void writeMessageToFile(String text) {
@@ -158,13 +167,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onSockedStop(SocketThread thread) {
 //        putLog("Stop");
-        setUIConnection(false);
+        setUIConnection(false, null);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
 //        putLog("Ready");
-        setUIConnection(true);
         String login = loginTextField.getText();
         String password = new String(passwordField.getPassword());
         thread.sendMessage(NChMP.getAuthRequest(login, password));
@@ -172,8 +180,32 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String message) {
-        putLog(message);
-        writeMessageToFile(message);
+        handleMessage(message);
+//
+    }
+
+    private void handleMessage(String message) {
+        System.out.println(message);
+        String[] strArray = message.split(NChMP.DELIMITER);
+        String messageType = strArray[0];
+        switch (messageType) {
+            case NChMP.AUTH_ACCEPT -> setUIConnection(true, strArray[1]);
+            case NChMP.AUTH_DENY -> putLog(message);
+            case NChMP.MESSAGE_FORMAT_ERROR -> {
+                putLog(message);
+                socketThread.close();
+            }
+            case NChMP.USER_LIST -> {
+                String users = message.substring(NChMP.USER_LIST.length() + NChMP.DELIMITER.length());
+                String[] usersArray = users.split(NChMP.DELIMITER);
+                Arrays.sort(usersArray);
+                usersList.setListData(usersArray);
+            }
+            case NChMP.MESSAGE_BROADCAST -> putLog(String.format("%s: %s: %s",
+                    DATE_FORMAT.format(Long.parseLong(strArray[1])),
+                    strArray[2], strArray[3]));
+            default -> throw new RuntimeException("Unknown message type: " + messageType);
+        }
     }
 
     @Override

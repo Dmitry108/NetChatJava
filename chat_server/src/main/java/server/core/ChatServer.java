@@ -56,6 +56,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     public void onServerStop(ServerSocketThread thread) {
         putLog("Server thread stopped");
         ClientsDBProvider.disconnect();
+        clients.forEach(SocketThread::close);
     }
 
     @Override
@@ -87,8 +88,14 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public void onSockedStop(SocketThread thread) {
-        putLog("Client disconnected");
-        clients.remove(thread);
+//        putLog("Client disconnected");
+        ClientThread client = (ClientThread) thread;
+        clients.remove(client);
+        //специальное служебное сообщение
+        if (client.getIsAuth()) {
+            sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", client.getNickname() + " disconnected"));
+        }
+        sendToAllAuthorizes(NChMP.getUserList(getUsers()));
     }
 
     @Override
@@ -108,14 +115,15 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void handleAuthMessage(ClientThread clientThread, String message) {
-        String[] strArray = message.split(NChMP.DELIMITER);
-        switch (strArray[0]) {
-            case NChMP.MESSAGE_BROADCAST -> {
-                message = clientThread.getNickname() + " to all: " + strArray[3];
-                sendToAllAuthorizes(message);
-            }
-            default -> clientThread.messageFormatError(message);
-        }
+//        String[] strArray = message.split(NChMP.DELIMITER);
+//        switch (strArray[0]) {
+//            case NChMP.MESSAGE_BROADCAST -> {
+//                message = clientThread.getNickname() + " to all: " + strArray[3];
+//                sendToAllAuthorizes(message);
+//            }
+//            default -> clientThread.messageFormatError(message);
+//        }
+        sendToAllAuthorizes(NChMP.getMessageBroadcast(clientThread.getNickname(), message));
     }
 
     private void sendToAllAuthorizes(String message) {
@@ -143,10 +151,22 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
         }
         clientThread.authAccept(nickname);
         sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
+        sendToAllAuthorizes(NChMP.getUserList(getUsers()));
     }
 
     @Override
     public void onSocketThreadException(SocketThread thread, Throwable throwable) {
         throwable.printStackTrace();
+    }
+
+    private String getUsers() {
+        final StringBuilder sb = new StringBuilder();
+        clients.forEach(thread -> {
+            ClientThread client = (ClientThread) thread;
+            if (client.getIsAuth()) {
+                sb.append(client.getNickname()).append(NChMP.DELIMITER);
+            }
+        });
+        return sb.toString();
     }
 }
