@@ -10,6 +10,8 @@ public class NChMP {
     public static final String MESSAGE_BROADCAST = START + "message_broadcast";
     public static final String MESSAGE_FORMAT_ERROR = START + "message_error";
     public static final String USER_LIST = START + "user_list";
+    public static final String USER_BROADCAST = START + "user_broadcast";
+
 
     public static String getAuthRequest(String login, String password) {
         return AUTH_REQUEST + DELIMITER + login + DELIMITER + password;
@@ -30,6 +32,10 @@ public class NChMP {
     public static String getMessageBroadcast(String source, String message) {
         return MESSAGE_BROADCAST + DELIMITER + System.currentTimeMillis() + DELIMITER + source +
                 DELIMITER + message;
+    }
+
+    public static String getClientBroadcast(String message) {
+        return USER_BROADCAST + DELIMITER + message;
     }
 
     //

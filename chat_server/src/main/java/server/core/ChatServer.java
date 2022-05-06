@@ -82,30 +82,30 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     @Override
-    public void onSockedStart(SocketThread thread, Socket socket) {
+    public synchronized void onSockedStart(SocketThread thread, Socket socket) {
         putLog("Client connected");
     }
 
     @Override
-    public void onSockedStop(SocketThread thread) {
+    public synchronized void onSockedStop(SocketThread thread) {
 //        putLog("Client disconnected");
         ClientThread client = (ClientThread) thread;
         clients.remove(client);
         //специальное служебное сообщение
-        if (client.getIsAuth()) {
+        if (client.getIsAuth() && !client.isReconnection()) {
             sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", client.getNickname() + " disconnected"));
         }
         sendToAllAuthorizes(NChMP.getUserList(getUsers()));
     }
 
     @Override
-    public void onSocketReady(SocketThread thread, Socket socket) {
+    public synchronized void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Client is ready");
         clients.add(thread);
     }
 
     @Override
-    public void onReceiveString(SocketThread thread, Socket socket, String message) {
+    public synchronized void onReceiveString(SocketThread thread, Socket socket, String message) {
         ClientThread client = (ClientThread) thread;
         if (client.getIsAuth()) {
             handleAuthMessage(client, message);
@@ -115,15 +115,12 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void handleAuthMessage(ClientThread clientThread, String message) {
-//        String[] strArray = message.split(NChMP.DELIMITER);
-//        switch (strArray[0]) {
-//            case NChMP.MESSAGE_BROADCAST -> {
-//                message = clientThread.getNickname() + " to all: " + strArray[3];
-//                sendToAllAuthorizes(message);
-//            }
-//            default -> clientThread.messageFormatError(message);
-//        }
-        sendToAllAuthorizes(NChMP.getMessageBroadcast(clientThread.getNickname(), message));
+        String[] strArray = message.split(NChMP.DELIMITER);
+        switch (strArray[0]) {
+            case NChMP.USER_BROADCAST -> sendToAllAuthorizes(
+                    NChMP.getMessageBroadcast(clientThread.getNickname(), strArray[1]));
+            default -> clientThread.messageFormatError(message);
+        }
     }
 
     private void sendToAllAuthorizes(String message) {
@@ -148,14 +145,21 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
             putLog("Invalid login attempt " + login);
             clientThread.authFail();
             return;
+        } else {
+            ClientThread oldClient = findClientByNickname(nickname);
+            clientThread.authAccept(nickname);
+            if (oldClient == null) {
+                sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
+            } else {
+                oldClient.reconnect();
+                clients.remove(oldClient);
+            }
         }
-        clientThread.authAccept(nickname);
-        sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
         sendToAllAuthorizes(NChMP.getUserList(getUsers()));
     }
 
     @Override
-    public void onSocketThreadException(SocketThread thread, Throwable throwable) {
+    public synchronized void onSocketThreadException(SocketThread thread, Throwable throwable) {
         throwable.printStackTrace();
     }
 
@@ -168,5 +172,17 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
             }
         });
         return sb.toString();
+    }
+
+    private synchronized ClientThread findClientByNickname(String nickname) {
+        ClientThread client;
+        for (SocketThread socketThread : clients) {
+            client = (ClientThread) socketThread;
+            if (!client.getIsAuth()) continue;
+            if (client.getNickname().equals(nickname)) {
+                return client;
+            }
+        }
+        return null;
     }
 }

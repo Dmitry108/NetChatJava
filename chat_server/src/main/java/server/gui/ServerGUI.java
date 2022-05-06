@@ -57,9 +57,10 @@ public class ServerGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     @Override
     public void uncaughtException(Thread thread, Throwable throwable) {
-        String message = String.format("Exception in thread %s %s: %s%n%s", thread.getName(),
-                throwable.getClass().getCanonicalName(), throwable.getMessage(), throwable.getStackTrace()[0]);
-        JOptionPane.showMessageDialog(null, message, "Exception", JOptionPane.ERROR_MESSAGE);
+        throwable.printStackTrace();
+//        String message = String.format("Exception in thread %s %s: %s%n%s", thread.getName(),
+//                throwable.getClass().getCanonicalName(), throwable.getMessage(), throwable.getStackTrace()[0]);
+//        JOptionPane.showMessageDialog(null, message, "Exception", JOptionPane.ERROR_MESSAGE);
     }
 
     @Override

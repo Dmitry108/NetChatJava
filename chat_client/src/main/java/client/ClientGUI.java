@@ -113,8 +113,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-//        socketThread.sendMessage(NChMP.getMessageBroadcast(loginTextField.getText(), text));
-        socketThread.sendMessage(text);
+        socketThread.sendMessage(NChMP.getClientBroadcast(text));
     }
 
     private void setUIConnection(boolean flag, String login) {
