@@ -10,6 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Vector;
 
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
@@ -115,10 +117,13 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void handleAuthMessage(ClientThread clientThread, String message) {
-        String[] strArray = message.split(NChMP.DELIMITER);
+        System.out.println(message);
+        String[] strArray = message.split(NChMP.DELIMITER, 3);
         switch (strArray[0]) {
             case NChMP.USER_BROADCAST -> sendToAllAuthorizes(
                     NChMP.getMessageBroadcast(clientThread.getNickname(), strArray[1]));
+            case NChMP.USER_PRIVATE -> sendPrivate(
+                    NChMP.getMessagePrivate(clientThread.getNickname(), strArray[1]), strArray[2]);
             default -> clientThread.messageFormatError(message);
         }
     }
@@ -126,6 +131,16 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     private void sendToAllAuthorizes(String message) {
         clients.forEach(client -> {
             if (((ClientThread) client).getIsAuth()) {
+                client.sendMessage(message);
+            }
+        });
+    }
+
+    private void sendPrivate(String message, String nicknames) {
+        List<String> strNick = Arrays.asList(nicknames.split(NChMP.DELIMITER));
+        clients.forEach(client -> {
+            ClientThread clientThread = (ClientThread) client;
+            if (clientThread.getIsAuth() && strNick.contains(clientThread.getNickname())) {
                 client.sendMessage(message);
             }
         });
