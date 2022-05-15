@@ -14,6 +14,7 @@ import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.List;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss ");
@@ -113,7 +114,14 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if (text.equals("")) return;
         messageTextField.setText("");
         messageTextField.requestFocus();
-        socketThread.sendMessage(NChMP.getClientBroadcast(text));
+        if (usersList.isSelectionEmpty()) {
+            socketThread.sendMessage(NChMP.getClientBroadcast(text));
+        } else {
+            List<String> nicknames = usersList.getSelectedValuesList();
+            StringBuilder sb = new StringBuilder();
+            nicknames.forEach(user -> sb.append(user).append(NChMP.DELIMITER));
+            socketThread.sendMessage(NChMP.getClientPrivate(text, sb.toString()));
+        }
     }
 
     private void setUIConnection(boolean flag, String login) {
@@ -201,6 +209,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
                 usersList.setListData(usersArray);
             }
             case NChMP.MESSAGE_BROADCAST -> putLog(String.format("%s: %s: %s",
+                    DATE_FORMAT.format(Long.parseLong(strArray[1])),
+                    strArray[2], strArray[3]));
+            case NChMP.MESSAGE_PRIVATE -> putLog(String.format("%s: %s private: %s",
                     DATE_FORMAT.format(Long.parseLong(strArray[1])),
                     strArray[2], strArray[3]));
             default -> throw new RuntimeException("Unknown message type: " + messageType);
