@@ -34,6 +34,14 @@ public class ClientThread extends SocketThread {
         close();
     }
 
+    public void registerResponse(String responseCode) {
+        if (NChMP.ACCESS.equals(responseCode)) {
+            sendMessage(NChMP.getRegisterAccess());
+        } else {
+            sendMessage(NChMP.getRegisterDeny(responseCode));
+        }
+    }
+
     public void messageFormatError(String message) {
         sendMessage(NChMP.getMessageFormatError(message));
         close();

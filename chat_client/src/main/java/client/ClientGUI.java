@@ -16,19 +16,21 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
 
-public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
+public class ClientGUI extends JFrame implements Client, ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss ");
     private static final int WIDTH = 600;
     private static final int HEIGHT = 300;
     public static final String TITLE = "Chat";
 
-    private final JPanel panelTop = new JPanel(new GridLayout(2, 3));
+    private final JPanel panelTop = new JPanel(new GridLayout(2, 4));
     private final JTextField ipAddressTextField = new JTextField("127.0.0.1");
     private final JTextField portTextField = new JTextField("222");
+    private final JButton connectButton = new JButton("Connect");
     private final JCheckBox onTopCheckBox = new JCheckBox("Always on top");
     private final JTextField loginTextField = new JTextField("aglar");
     private final JPasswordField passwordField = new JPasswordField("123");
     private final JButton loginButton = new JButton("Login");
+    private final JButton registerButton = new JButton("Register");
     private final JTextArea logTextArea = new JTextArea();
     private final JPanel panelBottom = new JPanel(new BorderLayout());
     private final JButton logoutButton = new JButton("Logout");
@@ -53,10 +55,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
         panelTop.add(ipAddressTextField);
         panelTop.add(portTextField);
+        panelTop.add(connectButton);
         panelTop.add(onTopCheckBox);
         panelTop.add(loginTextField);
         panelTop.add(passwordField);
         panelTop.add(loginButton);
+        panelTop.add(registerButton);
         panelBottom.add(logoutButton, BorderLayout.WEST);
         panelBottom.add(messageTextField, BorderLayout.CENTER);
         panelBottom.add(sendButton, BorderLayout.EAST);
@@ -66,14 +70,18 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         add(userListScrollPane, BorderLayout.EAST);
 
         onTopCheckBox.addActionListener(this);
+        connectButton.addActionListener(this);
         sendButton.addActionListener(this);
         messageTextField.addActionListener(this);
         loginButton.addActionListener(this);
+        registerButton.addActionListener(this);
         logoutButton.addActionListener(this);
 
+        setUIReady(false);
         setUIConnection(false, null);
         setVisible(true);
         Thread.setDefaultUncaughtExceptionHandler(this);
+        RegistrationGUI.getInstance().setClient(this);
     }
 
     public static void main(String[] args) {
@@ -85,10 +93,14 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         Object source = actionEvent.getSource();
         if (source.equals(onTopCheckBox)) {
             setAlwaysOnTop(onTopCheckBox.isSelected());
+        } else if (source.equals(connectButton)) {
+            connect();
+        } else if (source.equals(loginButton)) {
+            authorize(socketThread);
+        } else if (source.equals(registerButton)) {
+            doRegistration();
         } else if (source.equals(sendButton) || source.equals(messageTextField)) {
             sendMessage();
-        } else if (source.equals(loginButton)) {
-            connect();
         } else if (source.equals(logoutButton)) {
             disconnect();
         } else {
@@ -122,6 +134,11 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             nicknames.forEach(user -> sb.append(user).append(NChMP.DELIMITER));
             socketThread.sendMessage(NChMP.getClientPrivate(text, sb.toString()));
         }
+    }
+
+    private void setUIReady(boolean isReady) {
+        loginButton.setEnabled(isReady);
+        registerButton.setEnabled(isReady);
     }
 
     private void setUIConnection(boolean flag, String login) {
@@ -175,20 +192,29 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     public void onSockedStop(SocketThread thread) {
 //        putLog("Stop");
         setUIConnection(false, null);
+        setUIReady(false);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
 //        putLog("Ready");
-        String login = loginTextField.getText();
-        String password = new String(passwordField.getPassword());
-        thread.sendMessage(NChMP.getAuthRequest(login, password));
+        setUIReady(true);
     }
 
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String message) {
         handleMessage(message);
 //
+    }
+
+    private void authorize(SocketThread thread) {
+        String login = loginTextField.getText();
+        String password = new String(passwordField.getPassword());
+        thread.sendMessage(NChMP.getAuthRequest(login, password));
+    }
+
+    private void doRegistration() {
+        RegistrationGUI.getInstance().setVisible(true);
     }
 
     private void handleMessage(String message) {
@@ -198,6 +224,15 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         switch (messageType) {
             case NChMP.AUTH_ACCEPT -> setUIConnection(true, strArray[1]);
             case NChMP.AUTH_DENY -> putLog(message);
+            case NChMP.REGISTER_ACCESS -> putLog("Registration access");
+            case NChMP.REGISTER_DENY -> {
+                switch (strArray[1]) {
+                    case NChMP.LOGIN_EXISTS -> putLog("This login is already used");
+                    case NChMP.NICKNAME_EXISTS -> putLog("This nickname is already used");
+                    case NChMP.LOGIN_NICKNAME_EXISTS -> putLog("These login and nickname are already used");
+                    default -> putLog("Unknown register error");
+                }
+            }
             case NChMP.MESSAGE_FORMAT_ERROR -> {
                 putLog(message);
                 socketThread.close();
@@ -221,5 +256,10 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onSocketThreadException(SocketThread thread, Throwable throwable) {
         showException(thread, throwable);
+    }
+
+    @Override
+    public void register(String login, String nickname, String password) {
+        socketThread.sendMessage(NChMP.getRegisterRequest(login, nickname, password));
     }
 }
