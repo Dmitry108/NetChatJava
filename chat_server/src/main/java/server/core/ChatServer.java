@@ -124,6 +124,8 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
                     NChMP.getMessageBroadcast(clientThread.getNickname(), strArray[1]));
             case NChMP.USER_PRIVATE -> sendPrivate(
                     NChMP.getMessagePrivate(clientThread.getNickname(), strArray[1]), strArray[2]);
+            case NChMP.UPDATE_NICKNAME -> ClientsDBProvider.updateNickname(strArray[1], strArray[2]);
+            case NChMP.UPDATE_PASSWORD -> ClientsDBProvider.updatePassword(strArray[1], strArray[2]);
             default -> clientThread.messageFormatError(message);
         }
     }

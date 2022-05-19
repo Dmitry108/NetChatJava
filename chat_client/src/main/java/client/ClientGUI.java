@@ -33,6 +33,7 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
     private final JButton registerButton = new JButton("Register");
     private final JTextArea logTextArea = new JTextArea();
     private final JPanel panelBottom = new JPanel(new BorderLayout());
+    private final JButton accountButton = new JButton("Account");
     private final JButton logoutButton = new JButton("Logout");
     private final JTextField messageTextField = new JTextField();
     private final JButton sendButton = new JButton("Send");
@@ -61,6 +62,7 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
         panelTop.add(passwordField);
         panelTop.add(loginButton);
         panelTop.add(registerButton);
+        panelBottom.add(accountButton);
         panelBottom.add(logoutButton, BorderLayout.WEST);
         panelBottom.add(messageTextField, BorderLayout.CENTER);
         panelBottom.add(sendButton, BorderLayout.EAST);
@@ -75,6 +77,7 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
         messageTextField.addActionListener(this);
         loginButton.addActionListener(this);
         registerButton.addActionListener(this);
+        accountButton.addActionListener(this);
         logoutButton.addActionListener(this);
 
         setUIReady(false);
@@ -101,6 +104,8 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
             doRegistration();
         } else if (source.equals(sendButton) || source.equals(messageTextField)) {
             sendMessage();
+        } else if (source.equals(accountButton)) {
+            RegistrationGUI.getInstance().setVisible(true);
         } else if (source.equals(logoutButton)) {
             disconnect();
         } else {
@@ -118,6 +123,7 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
     }
 
     private void disconnect() {
+        RegistrationGUI.getInstance().setAuthUI(false);
         socketThread.close();
     }
 
@@ -224,7 +230,10 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
         switch (messageType) {
             case NChMP.AUTH_ACCEPT -> setUIConnection(true, strArray[1]);
             case NChMP.AUTH_DENY -> putLog(message);
-            case NChMP.REGISTER_ACCESS -> putLog("Registration access");
+            case NChMP.REGISTER_ACCESS -> {
+                putLog("Registration access");
+                RegistrationGUI.getInstance().setAuthUI(true);
+            }
             case NChMP.REGISTER_DENY -> {
                 switch (strArray[1]) {
                     case NChMP.LOGIN_EXISTS -> putLog("This login is already used");
@@ -261,5 +270,15 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
     @Override
     public void register(String login, String nickname, String password) {
         socketThread.sendMessage(NChMP.getRegisterRequest(login, nickname, password));
+    }
+
+    @Override
+    public void updateNickname(String nickname) {
+        socketThread.sendMessage(NChMP.getUpdateNickname(nickname));
+    }
+
+    @Override
+    public void updatePassword(String password) {
+        socketThread.sendMessage(NChMP.getUpdatePassword(password));
     }
 }

@@ -12,6 +12,7 @@ public class ClientsDBProvider {
     private static final String LOGIN_EXISTS = "SELECT login FROM users WHERE login = ?;";
     private static final String NICKNAME_EXISTS = "SELECT nickname FROM users WHERE nickname = ?;";
     private static final String REGISTER_QUERY = "INSERT INTO users (login, nickname, password) VALUES (?, ?, ?);";
+    private static final String UPDATE_NICKNAME = "UPDATE users SET nickname = ? WHERE login = ?;";
 
     synchronized static void connect() {
         try {
@@ -46,18 +47,16 @@ public class ClientsDBProvider {
         return null;
     }
 
-    public static String register(String login, String nickname, String password) {
+    synchronized public static String register(String login, String nickname, String password) {
         try {
-            boolean isLoginValid = false;
-            boolean isNicknameValid = false;
             statement = connection.prepareStatement(LOGIN_EXISTS);
             statement.setString(1, login);
             ResultSet request = statement.executeQuery();
-            isLoginValid = !request.next();
+            boolean isLoginValid = !request.next();
             statement = connection.prepareStatement(NICKNAME_EXISTS);
             statement.setString(1, nickname);
             request = statement.executeQuery();
-            isNicknameValid = !request.next();
+            boolean isNicknameValid = !request.next();
             statement = connection.prepareStatement(REGISTER_QUERY);
             statement.setString(1, login);
             statement.setString(2, nickname);
@@ -72,5 +71,17 @@ public class ClientsDBProvider {
         } catch (SQLException e) {
             throw new RuntimeException();
         }
+    }
+
+    synchronized public static boolean updateNickname(String login, String nickname) {
+        try {
+            statement = connection.prepareStatement(UPDATE_NICKNAME);
+            statement.setString(1, login);
+            statement.setString(2, nickname);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

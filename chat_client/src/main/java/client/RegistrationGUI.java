@@ -23,6 +23,7 @@ public class RegistrationGUI extends JFrame implements ActionListener {
     private final JPasswordField passwordField = new JPasswordField();
     private final JLabel errorLabel = new JLabel();
     private final JButton registerButton = new JButton("Register");
+    private final JButton updateButton = new JButton("Update");
 
     private RegistrationGUI() {
         setLocationRelativeTo(null);
@@ -46,6 +47,7 @@ public class RegistrationGUI extends JFrame implements ActionListener {
                 setVisible(false);
             }
         });
+        setAuthUI(false);
     }
 
     public static RegistrationGUI getInstance() {
@@ -64,6 +66,8 @@ public class RegistrationGUI extends JFrame implements ActionListener {
         Object source = actionEvent.getSource();
         if (source.equals(registerButton)) {
             doRegistration();
+        } else if (source.equals(updateButton)) {
+            updateAccount();
         } else {
             throw new IllegalStateException("Unexpected event");
         }
@@ -91,5 +95,18 @@ public class RegistrationGUI extends JFrame implements ActionListener {
         }
         client.register(login, nickname, password);
         setVisible(false);
+    }
+
+    public void updateAccount() {
+        String nickname = nickTextField.getText();
+        String password = new String(passwordField.getPassword());
+        if (!nickname.equals("")) client.updateNickname(nickname);
+        if (!password.equals("")) client.updatePassword(password);
+    }
+
+    public void setAuthUI(boolean isAuth) {
+        loginTextField.setEnabled(!isAuth);
+        registerButton.setVisible(!isAuth);
+        updateButton.setVisible(isAuth);
     }
 }
