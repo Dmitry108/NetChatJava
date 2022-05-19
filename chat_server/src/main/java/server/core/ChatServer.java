@@ -10,6 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Vector;
 
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
@@ -115,10 +117,13 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void handleAuthMessage(ClientThread clientThread, String message) {
-        String[] strArray = message.split(NChMP.DELIMITER);
+        System.out.println(message);
+        String[] strArray = message.split(NChMP.DELIMITER, 3);
         switch (strArray[0]) {
             case NChMP.USER_BROADCAST -> sendToAllAuthorizes(
                     NChMP.getMessageBroadcast(clientThread.getNickname(), strArray[1]));
+            case NChMP.USER_PRIVATE -> sendPrivate(
+                    NChMP.getMessagePrivate(clientThread.getNickname(), strArray[1]), strArray[2]);
             default -> clientThread.messageFormatError(message);
         }
     }
@@ -131,31 +136,55 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
         });
     }
 
+    private void sendPrivate(String message, String nicknames) {
+        List<String> strNick = Arrays.asList(nicknames.split(NChMP.DELIMITER));
+        clients.forEach(client -> {
+            ClientThread clientThread = (ClientThread) client;
+            if (clientThread.getIsAuth() && strNick.contains(clientThread.getNickname())) {
+                client.sendMessage(message);
+            }
+        });
+    }
+
     private void handleNotAuthMessage(ClientThread clientThread, String message) {
         String[] strArray = message.split(NChMP.DELIMITER);
-        if (strArray.length != 3 ||
-                !strArray[0].equals(NChMP.AUTH_REQUEST)) {
-            clientThread.messageFormatError(message);
-            return;
-        }
-        String login = strArray[1];
-        String password = strArray[2];
-        String nickname = ClientsDBProvider.getNickname(login, password);
-        if (nickname == null) {
-            putLog("Invalid login attempt " + login);
-            clientThread.authFail();
-            return;
-        } else {
-            ClientThread oldClient = findClientByNickname(nickname);
-            clientThread.authAccept(nickname);
-            if (oldClient == null) {
-                sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
-            } else {
-                oldClient.reconnect();
-                clients.remove(oldClient);
+        switch (strArray[0]) {
+            case NChMP.AUTH_REQUEST -> {
+                if (strArray.length != 3) {
+                    clientThread.messageFormatError(message);
+                    return;
+                }
+                String login = strArray[1];
+                String password = strArray[2];
+                String nickname = ClientsDBProvider.getNickname(login, password);
+                if (nickname == null) {
+                    putLog("Invalid login attempt " + login);
+                    clientThread.authFail();
+                    return;
+                } else {
+                    ClientThread oldClient = findClientByNickname(nickname);
+                    clientThread.authAccept(nickname);
+                    if (oldClient == null) {
+                        sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
+                    } else {
+                        oldClient.reconnect();
+                        clients.remove(oldClient);
+                    }
+                }
+                sendToAllAuthorizes(NChMP.getUserList(getUsers()));
+            }
+            case NChMP.REGISTER_REQUEST -> {
+                if (strArray.length != 4) {
+                    clientThread.messageFormatError(message);
+                    return;
+                }
+                String login = strArray[1];
+                String nickname = strArray[2];
+                String password = strArray[3];
+                String registerResultCode = ClientsDBProvider.register(login, nickname, password);
+                clientThread.registerResponse(registerResultCode);
             }
         }
-        sendToAllAuthorizes(NChMP.getUserList(getUsers()));
     }
 
     @Override
