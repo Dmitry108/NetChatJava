@@ -1,6 +1,7 @@
 build/*
 target/*
 .idea/*
+.run/*
 chat_client/target/*
 chat_common/target/*
 chat_server/target/*

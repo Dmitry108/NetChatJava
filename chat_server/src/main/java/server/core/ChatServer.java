@@ -99,8 +99,6 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String message) {
-//        thread.sendMessage("echo: " + message);
-        System.out.println(message);
         ClientThread client = (ClientThread) thread;
         if (client.getIsAuth()) {
             handleAuthMessage(client, message);
@@ -110,7 +108,14 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void handleAuthMessage(ClientThread clientThread, String message) {
-        sendToAllAuthorizes(message);
+        String[] strArray = message.split(NChMP.DELIMITER);
+        switch (strArray[0]) {
+            case NChMP.MESSAGE_BROADCAST -> {
+                message = clientThread.getNickname() + " to all: " + strArray[3];
+                sendToAllAuthorizes(message);
+            }
+            default -> clientThread.messageFormatError(message);
+        }
     }
 
     private void sendToAllAuthorizes(String message) {
@@ -119,30 +124,23 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
                 client.sendMessage(message);
             }
         });
-//        for (int i = 0; i < clients.size(); i++) {
-//            ClientThread client = (ClientThread) clients.get(i);
-//            if (!client.getIsAuth()) continue;
-//            client.sendMessage(message);
-//        }
     }
 
     private void handleNotAuthMessage(ClientThread clientThread, String message) {
         String[] strArray = message.split(NChMP.DELIMITER);
         if (strArray.length != 3 ||
-                !strArray[0].equals(NChMP.START + NChMP.AUTH_REQUEST)) {
+                !strArray[0].equals(NChMP.AUTH_REQUEST)) {
             clientThread.messageFormatError(message);
             return;
         }
         String login = strArray[1];
         String password = strArray[2];
-        System.out.println(login + " " + password);
         String nickname = ClientsDBProvider.getNickname(login, password);
         if (nickname == null) {
             putLog("Invalid login attempt " + login);
             clientThread.authFail();
             return;
         }
-        System.out.println(nickname);
         clientThread.authAccept(nickname);
         sendToAllAuthorizes(NChMP.getMessageBroadcast("Server", nickname + " connected"));
     }
