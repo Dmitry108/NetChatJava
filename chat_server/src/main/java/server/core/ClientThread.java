@@ -55,4 +55,8 @@ public class ClientThread extends SocketThread {
         isReconnection = true;
         close();
     }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }

@@ -39,8 +39,10 @@ public class RegistrationGUI extends JFrame implements ActionListener {
         add(errorLabel, BorderLayout.NORTH);
         add(panel, BorderLayout.CENTER);
         add(registerButton, BorderLayout.SOUTH);
+        add(updateButton, BorderLayout.SOUTH);
 
         registerButton.addActionListener(this);
+        updateButton.addActionListener(this);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -102,6 +104,7 @@ public class RegistrationGUI extends JFrame implements ActionListener {
         String password = new String(passwordField.getPassword());
         if (!nickname.equals("")) client.updateNickname(nickname);
         if (!password.equals("")) client.updatePassword(password);
+        setVisible(false);
     }
 
     public void setAuthUI(boolean isAuth) {

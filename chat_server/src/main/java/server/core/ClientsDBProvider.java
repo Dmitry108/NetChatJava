@@ -49,22 +49,20 @@ public class ClientsDBProvider {
 
     synchronized public static String register(String login, String nickname, String password) {
         try {
-            statement = connection.prepareStatement(LOGIN_EXISTS);
-            statement.setString(1, login);
-            ResultSet request = statement.executeQuery();
-            boolean isLoginValid = !request.next();
-            statement = connection.prepareStatement(NICKNAME_EXISTS);
-            statement.setString(1, nickname);
-            request = statement.executeQuery();
-            boolean isNicknameValid = !request.next();
+            boolean isLoginValid = checkLoginExists(login);
+            boolean isNicknameValid = checkNicknameExists(nickname);
             statement = connection.prepareStatement(REGISTER_QUERY);
             statement.setString(1, login);
             statement.setString(2, nickname);
             statement.setString(3, password);
-            if (isLoginValid && isNicknameValid) {
-                if (statement.executeUpdate() != 0) return NChMP.ACCESS;
-                return null;
-            }
+//            if (!isLoginValid) {
+//                if (!isNicknameValid) return NChMP.LOGIN_NICKNAME_EXISTS;
+//                else return NChMP.LOGIN_EXISTS;
+//            } else {
+//                if (!isNicknameValid) return NChMP.NICKNAME_EXISTS;
+//                else return (statement.executeUpdate() != 0) ? NChMP.ACCESS : null;
+//            }
+            if (isLoginValid && isNicknameValid) return (statement.executeUpdate() != 0) ? NChMP.ACCESS : null;
             if (!isLoginValid && !isNicknameValid) return NChMP.LOGIN_NICKNAME_EXISTS;
             if (!isLoginValid) return NChMP.LOGIN_EXISTS;
             return NChMP.NICKNAME_EXISTS;
@@ -73,11 +71,36 @@ public class ClientsDBProvider {
         }
     }
 
+    synchronized private static boolean checkLoginExists(String login) {
+        try {
+            statement = connection.prepareStatement(LOGIN_EXISTS);
+            statement.setString(1, login);
+            ResultSet request = statement.executeQuery();
+            return !request.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    synchronized private static boolean checkNicknameExists(String nickname) {
+        try {
+            statement = connection.prepareStatement(NICKNAME_EXISTS);
+            statement.setString(1, nickname);
+            ResultSet request = statement.executeQuery();
+            return !request.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     synchronized public static boolean updateNickname(String login, String nickname) {
+        if (!checkNicknameExists(nickname)) return false;
         try {
             statement = connection.prepareStatement(UPDATE_NICKNAME);
-            statement.setString(1, login);
-            statement.setString(2, nickname);
+            statement.setString(1, nickname);
+            statement.setString(2, login);
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

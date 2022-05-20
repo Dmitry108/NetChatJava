@@ -62,10 +62,13 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
         panelTop.add(passwordField);
         panelTop.add(loginButton);
         panelTop.add(registerButton);
-        panelBottom.add(accountButton);
-        panelBottom.add(logoutButton, BorderLayout.WEST);
+        JPanel panel = new JPanel();
+        panel.add(accountButton);
+        panel.add(logoutButton);
+        panelBottom.add(panel, BorderLayout.EAST);
+//        panelBottom.add(logoutButton, BorderLayout.WEST);
         panelBottom.add(messageTextField, BorderLayout.CENTER);
-        panelBottom.add(sendButton, BorderLayout.EAST);
+        panelBottom.add(sendButton, BorderLayout.WEST);
         add(panelTop, BorderLayout.NORTH);
         add(logScrollPane, BorderLayout.CENTER);
         add(panelBottom, BorderLayout.SOUTH);
@@ -123,7 +126,6 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
     }
 
     private void disconnect() {
-        RegistrationGUI.getInstance().setAuthUI(false);
         socketThread.close();
     }
 
@@ -197,6 +199,7 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
     @Override
     public void onSockedStop(SocketThread thread) {
 //        putLog("Stop");
+        RegistrationGUI.getInstance().setAuthUI(false);
         setUIConnection(false, null);
         setUIReady(false);
     }
@@ -228,12 +231,12 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
         String[] strArray = message.split(NChMP.DELIMITER);
         String messageType = strArray[0];
         switch (messageType) {
-            case NChMP.AUTH_ACCEPT -> setUIConnection(true, strArray[1]);
-            case NChMP.AUTH_DENY -> putLog(message);
-            case NChMP.REGISTER_ACCESS -> {
-                putLog("Registration access");
+            case NChMP.AUTH_ACCEPT -> {
+                setUIConnection(true, strArray[1]);
                 RegistrationGUI.getInstance().setAuthUI(true);
             }
+            case NChMP.AUTH_DENY -> putLog(message);
+            case NChMP.REGISTER_ACCESS -> putLog("Registration access");
             case NChMP.REGISTER_DENY -> {
                 switch (strArray[1]) {
                     case NChMP.LOGIN_EXISTS -> putLog("This login is already used");
@@ -242,6 +245,9 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
                     default -> putLog("Unknown register error");
                 }
             }
+            case NChMP.UPDATE_NICKNAME_SUCCESS ->
+                    putLog(String.format("Success changing a nickname from %s to %s", strArray[1], strArray[2]));
+            case NChMP.UPDATE_NICKNAME_ERROR -> putLog("Error in changing nickname, this nickname already exists");
             case NChMP.MESSAGE_FORMAT_ERROR -> {
                 putLog(message);
                 socketThread.close();
@@ -274,11 +280,11 @@ public class ClientGUI extends JFrame implements Client, ActionListener, Thread.
 
     @Override
     public void updateNickname(String nickname) {
-        socketThread.sendMessage(NChMP.getUpdateNickname(nickname));
+        socketThread.sendMessage(NChMP.getUpdateNickname(loginTextField.getText(), nickname));
     }
 
     @Override
     public void updatePassword(String password) {
-        socketThread.sendMessage(NChMP.getUpdatePassword(password));
+        socketThread.sendMessage(NChMP.getUpdatePassword(loginTextField.getText(), password));
     }
 }

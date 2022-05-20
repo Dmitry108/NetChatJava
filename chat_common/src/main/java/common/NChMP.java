@@ -11,6 +11,8 @@ public class NChMP {
     public static final String REGISTER_ACCESS = START + "register_access";
     public static final String REGISTER_DENY = START + "register_deny";
     public static final String UPDATE_NICKNAME = START + "update_nickname";
+    public static final String UPDATE_NICKNAME_SUCCESS = START + "update_nickname_success";
+    public static final String UPDATE_NICKNAME_ERROR = START + "update_nickname_error";
     public static final String UPDATE_PASSWORD = START + "update_password";
     public static final String MESSAGE_BROADCAST = START + "message_broadcast";
     public static final String MESSAGE_PRIVATE = START + "message_private";
@@ -77,6 +79,14 @@ public class NChMP {
 
     public static String getUpdateNickname(String login, String nickname) {
         return UPDATE_NICKNAME + DELIMITER + login + DELIMITER + nickname;
+    }
+
+    public static String getUpdateNicknameSuccess(String oldNickname, String newNickname) {
+        return UPDATE_NICKNAME_SUCCESS + DELIMITER + oldNickname + DELIMITER + newNickname;
+    }
+
+    public static String getUpdateNicknameError() {
+        return UPDATE_NICKNAME_ERROR;
     }
 
     public static String getUpdatePassword(String login, String password) {
